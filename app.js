@@ -71,15 +71,32 @@ let supaChannel = null;
 
 function isConnected() { return !!supaClient; }
 
-function initSupabase() {
+let supabaseLibPromise = null;
+function loadSupabaseLib() {
+  if (window.supabase) return Promise.resolve();
+  if (supabaseLibPromise) return supabaseLibPromise;
+  supabaseLibPromise = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Supabase library timed out")), 8000);
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
+    script.onload = () => { clearTimeout(timer); resolve(); };
+    script.onerror = () => { clearTimeout(timer); reject(new Error("Supabase library failed to load")); };
+    document.head.appendChild(script);
+  });
+  return supabaseLibPromise;
+}
+
+async function initSupabase() {
   if (!supaConfig || !supaConfig.url || !supaConfig.key) return;
   try {
+    await loadSupabaseLib();
     supaClient = window.supabase.createClient(supaConfig.url, supaConfig.key);
     subscribeRealtime();
     pullAllFromSupabase();
   } catch (e) {
     console.error("Supabase init failed", e);
     supaClient = null;
+    updateSyncPill();
   }
 }
 
