@@ -7,11 +7,16 @@ const $$ = (sel, el = document) => Array.from(el.querySelectorAll(sel));
 const appEl = () => $("#app");
 
 // ---------- date helpers ----------
-function toDate(str) { return new Date(str + "T00:00:00"); }
+// Trip days are calendar dates with no time-of-day meaning, so every helper
+// here operates in UTC to stay consistent regardless of the browser's local
+// timezone (mixing local-time parsing with UTC-based formatting previously
+// made addDays() a no-op — and allTripDays()'s loop infinite — for anyone
+// in a timezone ahead of UTC).
+function toDate(str) { return new Date(str + "T00:00:00Z"); }
 function fmtISO(d) { return d.toISOString().slice(0, 10); }
 function addDays(dateStr, n) {
   const d = toDate(dateStr);
-  d.setDate(d.getDate() + n);
+  d.setUTCDate(d.getUTCDate() + n);
   return fmtISO(d);
 }
 function allTripDays() {
@@ -27,14 +32,14 @@ function stayForDay(dateStr) {
   return STAYS.find((s) => dateStr >= s.checkIn && dateStr < s.checkOut);
 }
 function dow(dateStr) {
-  return toDate(dateStr).toLocaleDateString(undefined, { weekday: "short" });
+  return toDate(dateStr).toLocaleDateString(undefined, { weekday: "short", timeZone: "UTC" });
 }
 function dom(dateStr) {
-  return toDate(dateStr).getDate();
+  return toDate(dateStr).getUTCDate();
 }
 function prettyDate(dateStr) {
   return toDate(dateStr).toLocaleDateString(undefined, {
-    weekday: "long", day: "numeric", month: "long",
+    weekday: "long", day: "numeric", month: "long", timeZone: "UTC",
   });
 }
 
