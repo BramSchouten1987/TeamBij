@@ -10,8 +10,8 @@ const appEl = () => $("#app");
 // Trip days are calendar dates with no time-of-day meaning, so every helper
 // here operates in UTC to stay consistent regardless of the browser's local
 // timezone (mixing local-time parsing with UTC-based formatting previously
-// made addDays() a no-op — and allTripDays()'s loop infinite — for anyone
-// in a timezone ahead of UTC).
+// made addDays() a no-op — and any loop walking trip days infinite — for
+// anyone in a timezone ahead of UTC).
 function toDate(str) { return new Date(str + "T00:00:00Z"); }
 function fmtISO(d) { return d.toISOString().slice(0, 10); }
 function addDays(dateStr, n) {
@@ -19,28 +19,22 @@ function addDays(dateStr, n) {
   d.setUTCDate(d.getUTCDate() + n);
   return fmtISO(d);
 }
-function allTripDays() {
-  const days = [];
-  let cur = TRIP.start;
-  while (cur < TRIP.end) {
-    days.push(cur);
-    cur = addDays(cur, 1);
-  }
-  return days;
-}
 function stayForDay(dateStr) {
   return STAYS.find((s) => dateStr >= s.checkIn && dateStr < s.checkOut);
-}
-function dow(dateStr) {
-  return toDate(dateStr).toLocaleDateString(undefined, { weekday: "short", timeZone: "UTC" });
-}
-function dom(dateStr) {
-  return toDate(dateStr).getUTCDate();
 }
 function prettyDate(dateStr) {
   return toDate(dateStr).toLocaleDateString(undefined, {
     weekday: "long", day: "numeric", month: "long", timeZone: "UTC",
   });
+}
+function shortDate(dateStr) {
+  return toDate(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+}
+// "Today" as the device's own local calendar date — deliberately NOT run
+// through the UTC helpers above, which are for trip-day arithmetic only.
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -211,6 +205,29 @@ function placeLinksHtml(opt, originQuery) {
 function placeMetaHtml(opt) {
   if (!opt.mapsQuery) return "";
   return `<div class="place-meta" id="place-meta-${opt.id}"></div>`;
+}
+
+const EFFORT_LABELS = { low: "Relaxed", medium: "Medium", high: "Strenuous" };
+function effortLabel(effort) { return EFFORT_LABELS[effort] || effort; }
+
+const ACTIVITY_TYPE_BADGES = { hiking: "🥾 Hiking", biking: "🚴 Biking", swimming: "🏊 Swimming" };
+function activityBadgeHtml(opt) {
+  const label = ACTIVITY_TYPE_BADGES[opt.activityType];
+  return label ? `<span class="activity-badge">${label}</span>` : "";
+}
+function distanceLineHtml(opt) {
+  return opt.distanceLabel ? `<div class="distance-line">📏 ${opt.distanceLabel}</div>` : "";
+}
+function tagsHtml(opt) {
+  return `
+    <div class="tags">
+      ${activityBadgeHtml(opt)}
+      <span class="tag-chip">${opt.category}</span>
+      <span class="tag-chip">${effortLabel(opt.effort)}</span>
+      <span class="tag-chip">${opt.toddler ? "toddler-ok" : "adults-friendlier"}</span>
+    </div>
+    ${distanceLineHtml(opt)}
+  `;
 }
 
 // ---------------------------------------------------------------------------
@@ -399,59 +416,75 @@ function shell(title, backHref, bodyHtml) {
 }
 
 function renderHome() {
-  const days = allTripDays();
-  let html = "";
-  let lastStayId = null;
+  const lastTripDay = addDays(TRIP.end, -1);
 
-  days.forEach((date) => {
-    const stay = stayForDay(date);
-    if (!stay) return;
-    if (stay.id !== lastStayId) {
-      if (lastStayId !== null) html += `</div>`; // close previous group
-      html += `
-        <div class="stay-group">
-          <div class="stay-head">
-            <div>
-              <h2>${stay.name}</h2>
-              <div class="place">${stay.place}</div>
-            </div>
-            ${!stay.confirmed ? `<span class="badge unconfirmed">not booked</span>` : ""}
-          </div>
-      `;
-      lastStayId = stay.id;
-    }
+  const overviewHtml = STAYS.map((s) => `
+    <div class="location-box" onclick="location.hash='#/day/${s.checkIn}'">
+      <h3>${s.name}</h3>
+      <div class="place">${s.place}</div>
+      <div class="dates">${shortDate(s.checkIn)} – ${shortDate(s.checkOut)}</div>
+      ${!s.confirmed ? `<span class="badge unconfirmed">not booked</span>` : ""}
+    </div>
+  `).join("");
 
-    const rec = dayState[date];
-    const isTravel = stay.region === "travel";
-    let chosenTitle = "Tap to plan this day";
-    let sub = isTravel ? "Travel day" : "No plan yet";
+  const today = todayISO();
+  const tomorrow = addDays(today, 1);
 
-    if (rec && rec.chosenId) {
-      const pool = OPTIONS[stay.region] || [];
-      const opt = pool.find((o) => o.id === rec.chosenId);
-      if (opt) {
-        chosenTitle = opt.title;
-        sub = rec.updatedBy ? `Chosen by ${rec.updatedBy}` : "Chosen";
-      }
-    }
-
-    html += `
-      <div class="day-card" onclick="location.hash='#/day/${date}'">
-        <div class="date-block">
-          <div class="dow">${dow(date)}</div>
-          <div class="dom">${dom(date)}</div>
-        </div>
-        <div class="mid">
-          <div class="chosen">${chosenTitle}</div>
-          <div class="sub">${isTravel ? '<span class="travel-tag">✈ Travel day</span> · ' : ""}${sub}</div>
-        </div>
-        <div class="chevron">›</div>
-      </div>
+  function quickActionHtml(id, icon, label, date) {
+    const inRange = date >= TRIP.start && date < TRIP.end;
+    const stay = inRange ? stayForDay(date) : null;
+    const sub = stay ? stay.place
+      : date < TRIP.start ? `Trip starts ${shortDate(TRIP.start)}`
+      : "Trip's already over";
+    return `
+      <button class="quick-action-btn" id="${id}" ${inRange ? "" : "disabled"}>
+        <span class="qa-icon">${icon}</span>
+        <span class="qa-text">
+          <span class="qa-label">${label}</span>
+          <span class="qa-sub">${sub}</span>
+        </span>
+        <span class="qa-chevron">${inRange ? "›" : ""}</span>
+      </button>
     `;
-  });
-  if (lastStayId !== null) html += `</div>`;
+  }
 
-  shell(TRIP.name, null, html || `<div class="empty-hint">No days in range.</div>`);
+  const body = `
+    <div class="section-title">Your trip</div>
+    <div class="overview-grid">${overviewHtml}</div>
+
+    <div class="section-title">Quick plan</div>
+    <div class="quick-actions">
+      ${quickActionHtml("planTodayBtn", "☀️", "Plan for today", today)}
+      ${quickActionHtml("planTomorrowBtn", "🌤️", "Plan for tomorrow", tomorrow)}
+      <button class="quick-action-btn" id="planOtherBtn">
+        <span class="qa-icon">🔀</span>
+        <span class="qa-text"><span class="qa-label">Plan for another date</span></span>
+        <span class="qa-chevron">›</span>
+      </button>
+    </div>
+    <div class="date-picker-inline" id="otherDatePicker" style="display:none;">
+      <input type="date" id="otherDateInput" min="${TRIP.start}" max="${lastTripDay}"
+        value="${today >= TRIP.start && today <= lastTripDay ? today : TRIP.start}" />
+      <button class="btn small" id="goToDateBtn">Go</button>
+    </div>
+  `;
+
+  shell(TRIP.name, null, body);
+
+  if (today >= TRIP.start && today < TRIP.end) {
+    $("#planTodayBtn").onclick = () => { location.hash = `#/day/${today}`; };
+  }
+  if (tomorrow >= TRIP.start && tomorrow < TRIP.end) {
+    $("#planTomorrowBtn").onclick = () => { location.hash = `#/day/${tomorrow}`; };
+  }
+  $("#planOtherBtn").onclick = () => {
+    const picker = $("#otherDatePicker");
+    picker.style.display = picker.style.display === "none" ? "flex" : "none";
+  };
+  $("#goToDateBtn").onclick = () => {
+    const val = $("#otherDateInput").value;
+    if (val) location.hash = `#/day/${val}`;
+  };
 }
 
 function renderDay(date) {
@@ -545,11 +578,7 @@ function renderChoices(date, stay, answers, excludeIds = []) {
           <div class="rank">${i === 0 && !excludeIds.length ? "★ Top pick" : `#${i + 1}`}</div>
           <h3>${opt.title}</h3>
           <p>${opt.desc}</p>
-          <div class="tags">
-            <span class="tag-chip">${opt.category}</span>
-            <span class="tag-chip">${opt.effort} effort</span>
-            <span class="tag-chip">${opt.toddler ? "toddler-ok" : "adults-friendlier"}</span>
-          </div>
+          ${tagsHtml(opt)}
           ${placeMetaHtml(opt)}
           ${placeLinksHtml(opt, stay.address)}
           <button class="btn small choose-btn" data-id="${opt.id}">Pick this</button>
@@ -658,6 +687,7 @@ async function renderByDistance(date, stay, answers, excludeIds) {
           <div class="rank">#${i + 1} closest</div>
           <h3>${opt.title}</h3>
           <p>${opt.desc}</p>
+          ${tagsHtml(opt)}
           ${placeMetaHtml(opt)}
           ${placeLinksHtml(opt, stay.address)}
           <button class="btn small choose-btn" data-id="${opt.id}">Pick this</button>

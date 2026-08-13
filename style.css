@@ -90,26 +90,59 @@ main {
 .sync-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); }
 .sync-pill.on .dot { background: var(--accent); }
 
-.stay-group {
-  margin-bottom: 22px;
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 4px;
 }
+.location-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  cursor: pointer;
+}
+.location-box:active { background: #202c39; }
+.location-box h3 { margin: 0 0 4px; font-size: 14.5px; }
+.location-box .place { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+.location-box .dates { font-size: 12.5px; font-weight: 600; color: var(--accent); }
+.location-box .badge { margin-top: 8px; display: inline-block; }
 
-.stay-group .stay-head {
+.quick-actions { display: flex; flex-direction: column; gap: 8px; }
+.quick-action-btn {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 2px 2px 8px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 15px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+  font-family: inherit;
 }
+.quick-action-btn:active { background: #202c39; }
+.quick-action-btn:disabled { opacity: 0.4; cursor: default; }
+.quick-action-btn .qa-icon { font-size: 20px; }
+.quick-action-btn .qa-text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.quick-action-btn .qa-label { font-size: 14.5px; font-weight: 600; }
+.quick-action-btn .qa-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+.quick-action-btn .qa-chevron { color: var(--text-dim); font-size: 18px; }
 
-.stay-group .stay-head h2 {
+.date-picker-inline { display: flex; gap: 8px; margin-top: 8px; }
+.date-picker-inline input[type="date"] {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 12px 14px;
   font-size: 15px;
-  margin: 0;
-  font-weight: 700;
-}
-
-.stay-group .stay-head .place {
-  font-size: 12px;
-  color: var(--text-dim);
+  font-family: inherit;
+  color-scheme: dark;
 }
 
 .badge {
@@ -122,36 +155,6 @@ main {
   letter-spacing: 0.04em;
 }
 .badge.unconfirmed { color: var(--warn); border-color: var(--warn); }
-
-.day-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 15px;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  cursor: pointer;
-}
-.day-card:active { background: #202c39; }
-
-.day-card .date-block {
-  display: flex;
-  flex-direction: column;
-  min-width: 46px;
-}
-.day-card .dow { font-size: 11px; color: var(--text-dim); text-transform: uppercase; }
-.day-card .dom { font-size: 20px; font-weight: 700; }
-
-.day-card .mid { flex: 1; min-width: 0; }
-.day-card .mid .chosen { font-size: 14.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.day-card .mid .sub { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; }
-
-.chevron { color: var(--text-dim); font-size: 18px; }
-
-.travel-tag { color: var(--accent); font-size: 12px; font-weight: 600; }
 
 /* Question flow */
 .q-block { margin-bottom: 22px; }
@@ -220,6 +223,16 @@ main {
 .option-card p { margin: 0 0 12px; font-size: 14px; color: var(--text-dim); line-height: 1.45; }
 .option-card .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
 .tag-chip { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: #14202a; color: var(--text-dim); border: 1px solid var(--border); }
+.activity-badge {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #06231f;
+  font-weight: 700;
+  border: 1px solid var(--accent);
+}
+.distance-line { font-size: 12.5px; color: var(--text-dim); margin: -4px 0 10px; }
 
 .place-meta {
   font-size: 12.5px;
