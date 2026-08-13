@@ -221,6 +221,30 @@ main {
 .option-card .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
 .tag-chip { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: #14202a; color: var(--text-dim); border: 1px solid var(--border); }
 
+.place-meta {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  margin: -4px 0 10px;
+  min-height: 1em;
+}
+.place-meta .stars { color: var(--warn); }
+.place-meta .sep { margin: 0 6px; opacity: 0.5; }
+
+.place-links { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.link-chip {
+  font-size: 12.5px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: #14202a;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-block;
+}
+.link-chip:active { transform: scale(0.96); }
+
 .chosen-banner {
   background: var(--bg-card);
   border: 1px solid var(--accent);
