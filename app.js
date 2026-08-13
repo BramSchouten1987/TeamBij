@@ -255,9 +255,9 @@ function loadGoogleMapsLib() {
 }
 
 function readCache(key) { return readLS(key, {}); }
-function cacheGet(cacheKey, entryKey) {
+function cacheGet(cacheKey, entryKey, ttlMs = PLACE_CACHE_TTL_MS) {
   const entry = readCache(cacheKey)[entryKey];
-  if (!entry || Date.now() - entry.fetchedAt > PLACE_CACHE_TTL_MS) return undefined;
+  if (!entry || Date.now() - entry.fetchedAt > ttlMs) return undefined;
   return entry.data;
 }
 function cacheSet(cacheKey, entryKey, data) {
@@ -352,6 +352,82 @@ async function enrichPlaceCards(options, originAddress) {
 }
 
 // ---------------------------------------------------------------------------
+// Weather forecast (Open-Meteo — free, no API key, ~16 day horizon)
+// ---------------------------------------------------------------------------
+
+const WEATHER_ICONS = {
+  0: "☀️", 1: "🌤️", 2: "⛅", 3: "☁️",
+  45: "🌫️", 48: "🌫️",
+  51: "🌦️", 53: "🌦️", 55: "🌦️",
+  56: "🌧️", 57: "🌧️",
+  61: "🌧️", 63: "🌧️", 65: "🌧️",
+  66: "🌧️", 67: "🌧️",
+  71: "🌨️", 73: "🌨️", 75: "🌨️", 77: "🌨️",
+  80: "🌦️", 81: "🌦️", 82: "⛈️",
+  85: "🌨️", 86: "🌨️",
+  95: "⛈️", 96: "⛈️", 99: "⛈️",
+};
+function weatherIcon(code) { return WEATHER_ICONS[code] || "🌡️"; }
+const WEATHER_CACHE_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours — forecasts update through the day
+
+// Returns { [isoDate]: { max, min, code } } for the ~16 days Open-Meteo covers,
+// or null if the location can't be resolved / the request fails.
+async function getForecast(lat, lon) {
+  const entryKey = `${lat.toFixed(2)},${lon.toFixed(2)}`;
+  const cached = cacheGet("holiday26_weather_cache", entryKey, WEATHER_CACHE_TTL_MS);
+  if (cached !== undefined) return cached;
+
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&forecast_days=16`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Weather API ${res.status}`);
+    const json = await res.json();
+    const byDate = {};
+    json.daily.time.forEach((date, i) => {
+      byDate[date] = {
+        max: Math.round(json.daily.temperature_2m_max[i]),
+        min: Math.round(json.daily.temperature_2m_min[i]),
+        code: json.daily.weather_code[i],
+      };
+    });
+    cacheSet("holiday26_weather_cache", entryKey, byDate);
+    return byDate;
+  } catch (e) {
+    console.error("Weather fetch failed", e);
+    return null;
+  }
+}
+
+// Fills in a forecast chip per stay on the landing page, for whichever of its
+// days fall within the ~16-day forecast horizon. Silently leaves the chip
+// empty for stays too far out, or without a fixed address (the travel leg).
+async function enrichStayWeather(stays) {
+  if (!gmapsKey) return;
+  for (const stay of stays) {
+    const chipEl = document.getElementById(`weather-${stay.id}`);
+    if (!chipEl || !stay.address) continue;
+    try {
+      const place = await resolvePlace(stay.address);
+      if (!place || place.lat == null) continue;
+      const forecast = await getForecast(place.lat, place.lng);
+      if (!forecast) continue;
+
+      let day = stay.checkIn;
+      let hit = null;
+      while (day < stay.checkOut) {
+        if (forecast[day]) { hit = forecast[day]; break; }
+        day = addDays(day, 1);
+      }
+      if (hit) {
+        chipEl.innerHTML = `${weatherIcon(hit.code)} <span class="temp-high">${hit.max}°</span>/${hit.min}° <span class="wx-date">${shortDate(day)}</span>`;
+      }
+    } catch (e) {
+      console.error(`Weather lookup failed for "${stay.address}"`, e);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Recommendation engine
 // ---------------------------------------------------------------------------
 
@@ -424,6 +500,7 @@ function renderHome() {
       <div class="place">${s.place}</div>
       <div class="dates">${shortDate(s.checkIn)} – ${shortDate(s.checkOut)}</div>
       ${!s.confirmed ? `<span class="badge unconfirmed">not booked</span>` : ""}
+      <div class="weather-chip" id="weather-${s.id}"></div>
     </div>
   `).join("");
 
@@ -485,6 +562,8 @@ function renderHome() {
     const val = $("#otherDateInput").value;
     if (val) location.hash = `#/day/${val}`;
   };
+
+  enrichStayWeather(STAYS.filter((s) => s.region !== "travel"));
 }
 
 function renderDay(date) {

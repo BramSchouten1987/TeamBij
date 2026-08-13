@@ -108,6 +108,14 @@ main {
 .location-box .place { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
 .location-box .dates { font-size: 12.5px; font-weight: 600; color: var(--accent); }
 .location-box .badge { margin-top: 8px; display: inline-block; }
+.weather-chip {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+.weather-chip:empty { margin-top: 0; }
+.weather-chip .temp-high { color: var(--text); font-weight: 600; }
+.weather-chip .wx-date { opacity: 0.7; }
 
 .quick-actions { display: flex; flex-direction: column; gap: 8px; }
 .quick-action-btn {
