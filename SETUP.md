@@ -37,35 +37,24 @@ This is what lets you and your partner see the same choices update live.
    has both values — same level of "privacy" as a shared Google Doc link.
    Fine for holiday plans; don't reuse this project for anything sensitive.
 
-## 2. Add live Google ratings & travel time (optional, ~10 min, needs a card on file)
+## 2. Live Google ratings & travel time (already set up, nothing to do)
 
-Everything else in the app works with zero setup — every activity already
-has a "Google Maps" and "Directions" link. This step is only for showing a
-live star rating (with review count) and drive time/distance from your stay
-directly on each activity card.
+Every activity has a "Google Maps" and "Directions" link with zero setup.
+On top of that, star ratings, review counts, websites, and drive
+time/distance from your stay are already live on every device — the app
+ships with a Google Maps API key baked in
+(`console.cloud.google.com`, project `holiday-2026`), restricted to only
+work from `https://bramschouten1987.github.io/*`, with the Maps JavaScript
+API, Places API (New), and Distance Matrix API (Legacy) enabled on it.
 
-1. Go to **console.cloud.google.com** → create a new project (any name, e.g.
-   "holiday-2026").
-2. **APIs & Services → Library** → search for and enable each of these three:
-   - **Maps JavaScript API**
-   - **Places API (New)**
-   - **Distance Matrix API (Legacy)**
-3. **APIs & Services → Credentials → Create Credentials → API key.** Copy the
-   key it gives you.
-4. Click into the new key → under **Application restrictions** choose
-   **Websites** and add:
-   ```
-   https://bramschouten1987.github.io/*
-   ```
-   This stops anyone else from using your key even if it ends up in the
-   page source (which it will — that's normal for this kind of key).
-5. **Billing:** Google requires a card on file to enable these APIs, unlike
-   Supabase/Netlify. Personal use like this (a handful of lookups per day,
-   for two people, for a few weeks) stays far inside the free monthly
-   credit — you're not expected to actually be charged.
-6. Paste the key into the app: **Settings (⚙︎) → Google Maps API key →
-   Save & connect.** It's included automatically when you use "Copy share
-   link for partner", so you only need to do this once.
+You don't need to do anything for this to work. The Settings (⚙︎) → Google
+Maps API key field is only there if you ever want to swap in your *own* key
+instead of the shared one — leave it blank otherwise.
+
+If you ever need to manage the underlying key (rotate it, check usage,
+billing): it's in the `holiday-2026` Google Cloud project under APIs &
+Services → Credentials. Personal use like this stays far inside the free
+monthly quota (10,000 calls/month per API) — not expected to cost anything.
 
 ## 3. The app is already online, and how to update it
 
@@ -78,12 +67,11 @@ or two. No manual re-upload step needed.
 
 1. Open the app URL on your phone.
 2. Tap the settings (⚙︎) icon → paste the Supabase URL and anon key from
-   step 1 (and the Google Maps key from step 2, if you set one up) →
-   **Save & connect**.
+   step 1 → **Save & connect**. (Google ratings/distance need nothing here —
+   they already work.)
 3. Tap **Copy share link for partner** and send it to your partner (WhatsApp,
    iMessage, whatever). When they open it once, their phone connects to the
-   same shared trip (and picks up the Google Maps key, if set) automatically
-   — no account needed on their end.
+   same shared trip automatically — no account needed on their end.
 4. On both phones: open the site → share icon → **Add to Home Screen** (iOS)
    or the browser's **Install app** prompt (Android). You'll get a real app
    icon that opens full-screen, just like a native app.

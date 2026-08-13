@@ -67,7 +67,11 @@ function writeLS(key, val) {
 let dayState = readLS(LS_KEYS.days, {});
 let profile = readLS(LS_KEYS.profile, { name: "" });
 let supaConfig = readLS(LS_KEYS.supa, null);
-let gmapsKey = readLS(LS_KEYS.gmaps, "");
+
+// Restricted to https://bramschouten1987.github.io/* in Google Cloud Console —
+// safe to ship in client-side code, same as any Google Maps embed key.
+const DEFAULT_GMAPS_KEY = "AIzaSyB2B1zTXE6_MkYWgqaNVeA1_JI-atH4JMU";
+let gmapsKey = readLS(LS_KEYS.gmaps, "") || DEFAULT_GMAPS_KEY;
 
 // ---------------------------------------------------------------------------
 // Sync layer — Supabase if configured, always mirrored to localStorage
@@ -750,14 +754,13 @@ function renderSettings() {
 
     <div class="section-title">Live Google ratings & travel time</div>
     <p style="font-size:13px;color:var(--text-dim);margin-top:-6px;">
-      Add a Google Maps API key to show star ratings, review counts, and drive
-      time on each activity. Optional — Maps/Directions links work without it.
-      See SETUP.md for how to get a key.
-      ${gmapsKey ? "Currently set." : "Not set — showing plain map links only."}
+      Star ratings, review counts, and drive time are on by default. Only
+      touch this if you want to use your own Google Maps API key instead of
+      the built-in one — see SETUP.md.
     </p>
     <div class="field">
-      <label>Google Maps API key</label>
-      <input id="gmapsKeyField" type="text" value="${gmapsKey || ""}" placeholder="AIza..." />
+      <label>Google Maps API key (optional override)</label>
+      <input id="gmapsKeyField" type="text" value="${readLS(LS_KEYS.gmaps, "") || ""}" placeholder="AIza... (leave blank to use the default)" />
     </div>
 
     <div class="section-title">About this trip</div>
@@ -776,8 +779,10 @@ function renderSettings() {
     profile.name = $("#nameField").value.trim();
     writeLS(LS_KEYS.profile, profile);
 
-    gmapsKey = $("#gmapsKeyField").value.trim();
-    writeLS(LS_KEYS.gmaps, gmapsKey);
+    const gmapsOverride = $("#gmapsKeyField").value.trim();
+    writeLS(LS_KEYS.gmaps, gmapsOverride);
+    gmapsKey = gmapsOverride || DEFAULT_GMAPS_KEY;
+    gmapsLibPromise = null; // force a reload if the key just changed
 
     if (url && key) {
       supaConfig = { url, key };
@@ -794,7 +799,8 @@ function renderSettings() {
   const shareBtn = $("#shareBtn");
   if (shareBtn) {
     shareBtn.onclick = () => {
-      const payload = btoa(JSON.stringify({ ...supaConfig, gmapsKey }));
+      const gmapsOverride = readLS(LS_KEYS.gmaps, "");
+      const payload = btoa(JSON.stringify({ ...supaConfig, ...(gmapsOverride ? { gmapsKey: gmapsOverride } : {}) }));
       const link = `${location.origin}${location.pathname}#/settings?c=${payload}`;
       navigator.clipboard?.writeText(link);
       toast("Link copied — send it to your partner");
