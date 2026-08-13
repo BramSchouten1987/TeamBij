@@ -1,4 +1,4 @@
-const CACHE = "holiday26-v1";
+const CACHE = "holiday26-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -26,17 +26,17 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
-  // network-first for the supabase CDN + realtime, cache-first for our own assets
-  if (e.request.url.includes("supabase")) return;
+  // Let Supabase and Google Maps traffic go straight to the network, untouched.
+  if (e.request.url.includes("supabase") || e.request.url.includes("googleapis")) return;
+  // Network-first for our own assets — this is an actively-changing app, so a
+  // stale cached copy is worse than a fetch on every load. Cache is only the
+  // offline fallback, not the default source.
   e.respondWith(
-    caches.match(e.request).then((cached) => {
-      const fetchPromise = fetch(e.request)
-        .then((res) => {
-          if (res.ok) caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
-          return res;
-        })
-        .catch(() => cached);
-      return cached || fetchPromise;
-    })
+    fetch(e.request)
+      .then((res) => {
+        if (res.ok) caches.open(CACHE).then((c) => c.put(e.request, res.clone()));
+        return res;
+      })
+      .catch(() => caches.match(e.request))
   );
 });

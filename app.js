@@ -888,6 +888,15 @@ function boot() {
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
+    // When a newer service worker takes over (i.e. a fresh deploy landed),
+    // reload once so the page picks up the new code immediately instead of
+    // silently staying on the version that was loaded initially.
+    let reloadedForUpdate = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloadedForUpdate) return;
+      reloadedForUpdate = true;
+      location.reload();
+    });
   }
 }
 
