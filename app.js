@@ -206,6 +206,10 @@ function placeMetaHtml(opt) {
   if (!opt.mapsQuery) return "";
   return `<div class="place-meta" id="place-meta-${opt.id}"></div>`;
 }
+function photoGalleryHtml(opt) {
+  if (!opt.mapsQuery) return "";
+  return `<div class="photo-gallery" id="photos-${opt.id}"></div>`;
+}
 
 const EFFORT_LABELS = { low: "Relaxed", medium: "Medium", high: "Strenuous" };
 function effortLabel(effort) { return EFFORT_LABELS[effort] || effort; }
@@ -275,7 +279,7 @@ async function resolvePlace(query) {
   const { Place } = await google.maps.importLibrary("places");
   const { places } = await Place.searchByText({
     textQuery: query,
-    fields: ["rating", "userRatingCount", "googleMapsURI", "websiteURI", "location"],
+    fields: ["rating", "userRatingCount", "googleMapsURI", "websiteURI", "location", "photos"],
     maxResultCount: 1,
   });
   const place = places && places[0];
@@ -286,6 +290,7 @@ async function resolvePlace(query) {
     websiteURI: place.websiteURI || null,
     lat: place.location ? place.location.lat() : null,
     lng: place.location ? place.location.lng() : null,
+    photoURIs: (place.photos || []).slice(0, 6).map((p) => p.getURI({ maxWidth: 640 })),
   } : null;
 
   cacheSet("holiday26_place_cache", query, data);
@@ -345,6 +350,13 @@ async function enrichPlaceCards(options, originAddress) {
           linksEl.insertAdjacentHTML("beforeend",
             `<a class="link-chip website-link" href="${place.websiteURI}" target="_blank" rel="noopener">🌐 Website</a>`);
         }
+      }
+
+      const galleryEl = document.getElementById(`photos-${opt.id}`);
+      if (galleryEl && place.photoURIs && place.photoURIs.length) {
+        galleryEl.innerHTML = place.photoURIs
+          .map((uri) => `<img src="${uri}" alt="${opt.title}" loading="lazy" />`)
+          .join("");
       }
     } catch (e) {
       console.error(`Place lookup failed for "${opt.mapsQuery}"`, e);
@@ -598,6 +610,7 @@ function renderDay(date) {
         <div class="label">Today's plan</div>
         <h3>${chosen.title}</h3>
         <p>${chosen.desc}</p>
+        ${photoGalleryHtml(chosen)}
         ${placeMetaHtml(chosen)}
         ${placeLinksHtml(chosen, stay.address)}
         <div class="meta">${state.updatedBy ? `Chosen by ${state.updatedBy} · ` : ""}${new Date(state.updatedAt).toLocaleString()}</div>
@@ -673,6 +686,7 @@ function renderChoices(date, stay, answers, excludeIds = []) {
           <div class="rank">${i === 0 && !excludeIds.length ? "★ Top pick" : `#${i + 1}`}</div>
           <h3>${opt.title}</h3>
           <p>${opt.desc}</p>
+          ${photoGalleryHtml(opt)}
           ${tagsHtml(opt)}
           ${placeMetaHtml(opt)}
           ${placeLinksHtml(opt, stay.address)}
@@ -782,6 +796,7 @@ async function renderByDistance(date, stay, answers, excludeIds) {
           <div class="rank">#${i + 1} closest</div>
           <h3>${opt.title}</h3>
           <p>${opt.desc}</p>
+          ${photoGalleryHtml(opt)}
           ${tagsHtml(opt)}
           ${placeMetaHtml(opt)}
           ${placeLinksHtml(opt, stay.address)}

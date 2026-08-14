@@ -252,6 +252,25 @@ main {
 .place-meta .stars { color: var(--warn); }
 .place-meta .sep { margin: 0 6px; opacity: 0.5; }
 
+.photo-gallery {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  margin-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.photo-gallery:empty { margin-bottom: 0; }
+.photo-gallery img {
+  height: 140px;
+  width: auto;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  scroll-snap-align: start;
+  object-fit: cover;
+  background: var(--bg-elevated);
+}
+
 .place-links { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .link-chip {
   font-size: 12.5px;
