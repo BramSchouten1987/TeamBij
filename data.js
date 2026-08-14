@@ -79,11 +79,19 @@ const SUGGESTED_STOPOVERS = [
 // question-flow answers to produce the "top choices" for that day.
 //
 // tags:
-//   category: nature | water | culture | food | adventure | chill
-//   effort:   low | medium | high
-//   weather:  sunny | any | indoor  (best-suited conditions)
-//   toddler:  true/false — safe & manageable with a 2-year-old
-//   duration: approx hours
+//   category:     nature | water | culture | food | adventure | chill
+//   activityType: hiking | biking | swimming | relaxing (optional — only set
+//                 when the option is clearly one of these; used for its own
+//                 filter/badge, separate from category)
+//   effort:       low | medium | high
+//   weather:      sunny | any | indoor  (best-suited conditions)
+//   kidFit:       easy    — toddler can walk/bike it themselves, short & flat
+//                 carrier — fine with a toddler in a hiking carrier/child seat,
+//                           not fine for a toddler to self-mobilize
+//                 none    — adults only (technical, too long, or genuinely
+//                           unsafe with a small child along)
+//   distanceLabel: optional human-readable distance/route length
+//   duration:     approx hours
 // ---------------------------------------------------------------------------
 
 const OPTIONS = {
@@ -96,7 +104,7 @@ const OPTIONS = {
       category: "nature",
       effort: "low",
       weather: "sunny",
-      toddler: true,
+      kidFit: "easy",
       duration: 3,
     },
     {
@@ -107,7 +115,7 @@ const OPTIONS = {
       category: "water",
       effort: "low",
       weather: "sunny",
-      toddler: true,
+      kidFit: "easy",
       duration: 1.5,
     },
     {
@@ -119,7 +127,7 @@ const OPTIONS = {
       activityType: "swimming",
       effort: "low",
       weather: "sunny",
-      toddler: true,
+      kidFit: "easy",
       duration: 2.5,
     },
     {
@@ -130,7 +138,7 @@ const OPTIONS = {
       category: "water",
       effort: "low",
       weather: "sunny",
-      toddler: true,
+      kidFit: "easy",
       duration: 3,
     },
     {
@@ -141,7 +149,7 @@ const OPTIONS = {
       category: "adventure",
       effort: "medium",
       weather: "sunny",
-      toddler: false,
+      kidFit: "carrier",
       duration: 4,
     },
     {
@@ -154,7 +162,7 @@ const OPTIONS = {
       distanceLabel: "5.5 km round trip",
       effort: "high",
       weather: "sunny",
-      toddler: false,
+      kidFit: "carrier",
       duration: 4,
     },
     {
@@ -165,7 +173,7 @@ const OPTIONS = {
       category: "adventure",
       effort: "medium",
       weather: "sunny",
-      toddler: true,
+      kidFit: "easy",
       duration: 4,
     },
     {
@@ -174,9 +182,10 @@ const OPTIONS = {
       desc: "Sunny terrace hut with proper local food (don't skip the Kaiserschmarrn) and a kids' playground on site — a relaxed half-day if the weather's mixed.",
       mapsQuery: "Gamsalm, Ehrwald, Austria",
       category: "food",
+      activityType: "relaxing",
       effort: "low",
       weather: "any",
-      toddler: true,
+      kidFit: "easy",
       duration: 2,
     },
     {
@@ -189,7 +198,7 @@ const OPTIONS = {
       distanceLabel: "~9 km, ~150 m ascent",
       effort: "medium",
       weather: "sunny",
-      toddler: true,
+      kidFit: "carrier",
       duration: 3,
     },
     {
@@ -198,9 +207,10 @@ const OPTIONS = {
       desc: "Authentic Tirolean farmhouse kitchen just outside the village, outdoor patio warmed by an open wood fire — a proper sit-down dinner after a big day.",
       mapsQuery: "Bettina's Mooswirt, Ehrwald, Austria",
       category: "food",
+      activityType: "relaxing",
       effort: "low",
       weather: "any",
-      toddler: true,
+      kidFit: "easy",
       duration: 2,
     },
     {
@@ -211,8 +221,21 @@ const OPTIONS = {
       category: "culture",
       effort: "low",
       weather: "indoor",
-      toddler: true,
+      kidFit: "easy",
       duration: 3,
+    },
+    {
+      id: "ty-grubigstein-hike",
+      title: "Grubigstein summit hike (2,233m)",
+      desc: "Real alpine hike from Lermoos: steep, sure-footedness required, loose scree near the top — genuinely challenging, not a stroll. Cable car down from the Grubighütte if you want to shortcut the descent. Adults only.",
+      mapsQuery: "Grubigstein, Lermoos, Austria",
+      category: "nature",
+      activityType: "hiking",
+      distanceLabel: "~6.3 km round trip, ~1,180 m ascent, ~3.5-4h",
+      effort: "high",
+      weather: "sunny",
+      kidFit: "none",
+      duration: 4,
     },
   ],
 
@@ -223,9 +246,10 @@ const OPTIONS = {
       desc: "The classic Grossglockner High Alpine Road stop: wide accessible terraces looking straight at Austria's highest peak and the Pasterze Glacier. Marmot-spotting for the kids, restaurant on site.",
       mapsQuery: "Kaiser-Franz-Josefs-Höhe, Heiligenblut, Austria",
       category: "nature",
+      activityType: "relaxing",
       effort: "low",
       weather: "sunny",
-      toddler: true,
+      kidFit: "easy",
       duration: 3,
     },
     {
@@ -236,7 +260,7 @@ const OPTIONS = {
       category: "nature",
       effort: "low",
       weather: "sunny",
-      toddler: true,
+      kidFit: "easy",
       duration: 5,
     },
     {
@@ -249,7 +273,7 @@ const OPTIONS = {
       distanceLabel: "~2.6 km round trip",
       effort: "low",
       weather: "any",
-      toddler: true,
+      kidFit: "easy",
       duration: 2,
     },
     {
@@ -258,9 +282,10 @@ const OPTIONS = {
       desc: "Postcard alpine village under the Grossglockner, gothic pilgrimage church, small cafés — an easy low-key wander for a slow morning.",
       mapsQuery: "Pfarrkirche Heiligenblut, Austria",
       category: "culture",
+      activityType: "relaxing",
       effort: "low",
       weather: "any",
-      toddler: true,
+      kidFit: "easy",
       duration: 1.5,
     },
     {
@@ -271,7 +296,7 @@ const OPTIONS = {
       category: "adventure",
       effort: "low",
       weather: "sunny",
-      toddler: true,
+      kidFit: "easy",
       duration: 2.5,
     },
     {
@@ -284,7 +309,7 @@ const OPTIONS = {
       distanceLabel: "~6 km",
       effort: "high",
       weather: "sunny",
-      toddler: false,
+      kidFit: "carrier",
       duration: 5,
     },
     {
@@ -296,7 +321,7 @@ const OPTIONS = {
       activityType: "swimming",
       effort: "low",
       weather: "indoor",
-      toddler: true,
+      kidFit: "easy",
       duration: 2,
     },
     {
@@ -309,7 +334,7 @@ const OPTIONS = {
       distanceLabel: "Glockner Radweg valley path — go as far as you like (up to 80 km one-way)",
       effort: "medium",
       weather: "sunny",
-      toddler: true,
+      kidFit: "carrier",
       duration: 3,
     },
     {
@@ -318,10 +343,24 @@ const OPTIONS = {
       desc: "Carinthian cheese noodles (Kasnudeln), Glockner lamb, and Reindling for dessert — a proper regional dinner right in the village, good local wine list too.",
       mapsQuery: "Landgasthof Sonnblick, Heiligenblut, Austria",
       category: "food",
+      activityType: "relaxing",
       effort: "low",
       weather: "any",
-      toddler: true,
+      kidFit: "easy",
       duration: 2,
+    },
+    {
+      id: "ca-mohar-hike",
+      title: "Mohar summit hike (2,604m)",
+      desc: "Real summit hike from the Glocknerblick mountain inn — non-glacier, no technical climbing, but sustained steep ascent and genuine alpine terrain. Sweeping views to the Grossglockner and Sonnblick. Adults only.",
+      mapsQuery: "Glocknerblick, Heiligenblut, Austria",
+      category: "nature",
+      activityType: "hiking",
+      distanceLabel: "~560 m ascent, ~4-5h round trip",
+      effort: "high",
+      weather: "sunny",
+      kidFit: "none",
+      duration: 5,
     },
   ],
 
@@ -335,7 +374,7 @@ const OPTIONS = {
       activityType: "swimming",
       effort: "low",
       weather: "sunny",
-      toddler: true,
+      kidFit: "easy",
       duration: 4,
     },
     {
@@ -348,7 +387,7 @@ const OPTIONS = {
       distanceLabel: "4.4 km loop",
       effort: "low",
       weather: "any",
-      toddler: true,
+      kidFit: "carrier",
       duration: 2,
     },
     {
@@ -357,9 +396,10 @@ const OPTIONS = {
       desc: "Istria's postcard town — pastel houses, hilltop church, harbour-front gelato. Cobbled and hilly, fine with a carrier or light stroller.",
       mapsQuery: "Rovinj old town, Croatia",
       category: "culture",
+      activityType: "relaxing",
       effort: "low",
       weather: "any",
-      toddler: true,
+      kidFit: "carrier",
       duration: 3,
     },
     {
@@ -370,7 +410,7 @@ const OPTIONS = {
       category: "adventure",
       effort: "low",
       weather: "sunny",
-      toddler: true,
+      kidFit: "easy",
       duration: 3,
     },
     {
@@ -382,7 +422,7 @@ const OPTIONS = {
       activityType: "swimming",
       effort: "medium",
       weather: "sunny",
-      toddler: true,
+      kidFit: "easy",
       duration: 5,
     },
     {
@@ -395,7 +435,7 @@ const OPTIONS = {
       distanceLabel: "flexible — flat coastal roads, go as far as you like",
       effort: "medium",
       weather: "sunny",
-      toddler: true,
+      kidFit: "carrier",
       duration: 3,
     },
     {
@@ -406,7 +446,7 @@ const OPTIONS = {
       category: "adventure",
       effort: "low",
       weather: "sunny",
-      toddler: true,
+      kidFit: "easy",
       duration: 3,
     },
     {
@@ -417,7 +457,7 @@ const OPTIONS = {
       category: "nature",
       effort: "low",
       weather: "any",
-      toddler: true,
+      kidFit: "easy",
       duration: 2,
     },
     {
@@ -428,7 +468,7 @@ const OPTIONS = {
       category: "culture",
       effort: "low",
       weather: "any",
-      toddler: true,
+      kidFit: "easy",
       duration: 1.5,
     },
     {
@@ -439,7 +479,7 @@ const OPTIONS = {
       category: "adventure",
       effort: "medium",
       weather: "any",
-      toddler: false,
+      kidFit: "carrier",
       duration: 3,
     },
     {
@@ -448,9 +488,10 @@ const OPTIONS = {
       desc: "Homemade Istrian cooking right in the village — stews, hand-rolled pasta with truffles, meat and veg from their own farm. Cosy, unpretentious, walkable from the villa.",
       mapsQuery: "Konoba Klarići, Svetvinčenat, Croatia",
       category: "food",
+      activityType: "relaxing",
       effort: "low",
       weather: "any",
-      toddler: true,
+      kidFit: "easy",
       duration: 2,
     },
     {
@@ -461,8 +502,20 @@ const OPTIONS = {
       category: "culture",
       effort: "low",
       weather: "indoor",
-      toddler: true,
+      kidFit: "easy",
       duration: 3,
+    },
+    {
+      id: "is-scuba-diving",
+      title: "Scuba diving off Rovinj (wrecks & reefs)",
+      desc: "Two-tank boat dive with Diving Center Morski Puž — the SS Baron Gautsch wreck (39m, sunk 1914) is the big local draw, plus reef dives in the Rovinj archipelago. Bring or verify certification/logbook; deeper wreck dives usually want a recent dive history. Adults only.",
+      mapsQuery: "Diving Center Morski Puž, Rovinj, Croatia",
+      category: "adventure",
+      activityType: "swimming",
+      effort: "high",
+      weather: "sunny",
+      kidFit: "none",
+      duration: 5,
     },
   ],
 
@@ -475,7 +528,7 @@ const OPTIONS = {
       category: "chill",
       effort: "low",
       weather: "any",
-      toddler: true,
+      kidFit: "easy",
       duration: 1,
     },
     {
@@ -486,7 +539,7 @@ const OPTIONS = {
       category: "chill",
       effort: "low",
       weather: "any",
-      toddler: true,
+      kidFit: "easy",
       duration: 1,
     },
   ],
@@ -522,17 +575,39 @@ const QUESTIONS = [
       { label: "🌲 Nature", value: "nature" },
       { label: "💧 Water", value: "water" },
       { label: "🏛️ Culture", value: "culture" },
-      { label: "🍽️ Food & relax", value: "food" },
+      { label: "🍽️ Eating & drinking", value: "food" },
       { label: "⚡ Adventure", value: "adventure" },
     ],
   },
   {
-    id: "toddler",
-    text: "Does it need to be toddler-manageable today?",
+    id: "activityType",
+    text: "Any particular type of activity?",
     multi: false,
     choices: [
-      { label: "Yes, must be", value: true },
-      { label: "No, flexible (has a sitter / nap covered)", value: false },
+      { label: "🥾 Hiking", value: "hiking" },
+      { label: "🚴 Biking", value: "biking" },
+      { label: "🏊 Swimming", value: "swimming" },
+      { label: "😌 Relaxing", value: "relaxing" },
+      { label: "🤷 No preference", value: "none" },
+    ],
+  },
+  {
+    id: "kids",
+    text: "Kids with you today?",
+    multi: false,
+    choices: [
+      { label: "Yes", value: true },
+      { label: "No — anything goes", value: false },
+    ],
+  },
+  {
+    id: "kidsMobility",
+    text: "How are the little ones getting around?",
+    multi: false,
+    showIf: (answers) => answers.kids === true,
+    choices: [
+      { label: "🚶 Own two feet / bike", value: "walk" },
+      { label: "🎒 Carrier backpack is fine", value: "carrier" },
     ],
   },
 ];

@@ -218,13 +218,14 @@ function activityBadgeHtml(opt) {
 function distanceLineHtml(opt) {
   return opt.distanceLabel ? `<div class="distance-line">📏 ${opt.distanceLabel}</div>` : "";
 }
+const KID_FIT_LABELS = { easy: "kid-walkable", carrier: "carrier-ok", none: "adults only" };
 function tagsHtml(opt) {
   return `
     <div class="tags">
       ${activityBadgeHtml(opt)}
       <span class="tag-chip">${opt.category}</span>
       <span class="tag-chip">${effortLabel(opt.effort)}</span>
-      <span class="tag-chip">${opt.toddler ? "toddler-ok" : "adults-friendlier"}</span>
+      <span class="tag-chip ${opt.kidFit === "none" ? "adults-only" : ""}">${KID_FIT_LABELS[opt.kidFit] || opt.kidFit}</span>
     </div>
     ${distanceLineHtml(opt)}
   `;
@@ -432,9 +433,19 @@ async function enrichStayWeather(stays) {
 // ---------------------------------------------------------------------------
 
 function scoreOption(opt, answers) {
-  if (answers.toddler === true && !opt.toddler) return -Infinity;
+  // Kids with you: hard-filter to what's actually suitable. Adults-only
+  // (kidFit "none") is excluded whenever kids are along, and if the little
+  // one is walking/biking themselves rather than riding in a carrier, only
+  // "easy" (self-mobilizable) options qualify. No kids = everything's fair
+  // game, including the adults-only/challenging stuff.
+  if (answers.kids === true) {
+    if (opt.kidFit === "none") return -Infinity;
+    if (answers.kidsMobility === "walk" && opt.kidFit !== "easy") return -Infinity;
+  }
+
   let score = 0;
   if (answers.mood && opt.category === answers.mood) score += 3;
+  if (answers.activityType && answers.activityType !== "none" && opt.activityType === answers.activityType) score += 3;
   if (answers.energy && opt.effort === answers.energy) score += 2;
   if (answers.weather) {
     if (opt.weather === answers.weather) score += 2;
@@ -601,9 +612,12 @@ function renderDay(date) {
     return;
   }
 
-  // question flow
+  // question flow — some questions (kidsMobility) only appear once their
+  // showIf condition is met, so a full re-render on every answer keeps the
+  // visible set correct rather than trying to patch the DOM incrementally.
   const answers = state.answers || {};
-  QUESTIONS.forEach((q) => {
+  const visibleQuestions = QUESTIONS.filter((q) => !q.showIf || q.showIf(answers));
+  visibleQuestions.forEach((q) => {
     body += `
       <div class="q-block" data-q="${q.id}">
         <div class="q-text">${q.text}</div>
@@ -623,19 +637,21 @@ function renderDay(date) {
     const qid = block.dataset.q;
     $$(".choice-btn", block).forEach((btn) => {
       btn.onclick = () => {
-        $$(".choice-btn", block).forEach((b) => b.classList.remove("selected"));
-        btn.classList.add("selected");
         let val = btn.dataset.value;
         if (val === "true") val = true;
         if (val === "false") val = false;
         answers[qid] = val;
-        saveDay(date, { answers });
+        const scrollY = window.scrollY;
+        saveDay(date, { answers }).then(() => {
+          renderDay(date);
+          window.scrollTo(0, scrollY);
+        });
       };
     });
   });
 
   $("#revealBtn").onclick = () => {
-    const missing = QUESTIONS.filter((q) => answers[q.id] === undefined);
+    const missing = visibleQuestions.filter((q) => answers[q.id] === undefined);
     if (missing.length) { toast(`Answer "${missing[0].text}" first`); return; }
     renderChoices(date, stay, answers);
   };
@@ -648,7 +664,7 @@ function renderChoices(date, stay, answers, excludeIds = []) {
   let body = `<div class="section-title">${label} for ${prettyDate(date)}</div>`;
 
   if (!top.length) {
-    body += `<div class="empty-hint">${excludeIds.length ? "That's everything that fits your answers." : "Nothing matches all your answers — try \"flexible\" on toddler-friendly or a different mood."}</div>
+    body += `<div class="empty-hint">${excludeIds.length ? "That's everything that fits your answers." : "Nothing matches all your answers — try a carrier instead of walking, or a different mood."}</div>
       <button class="btn secondary" id="backToQ">← Adjust answers</button>`;
   } else {
     top.forEach((opt, i) => {
