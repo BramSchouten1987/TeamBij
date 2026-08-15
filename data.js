@@ -694,18 +694,10 @@ const OPTIONS = {
   ],
 };
 
-// Question flow shown for every non-travel day.
+// Question flow shown for every non-travel day. Weather is no longer asked
+// here — the real forecast (when available) is shown directly and quietly
+// feeds scoring instead of a subjective self-reported question.
 const QUESTIONS = [
-  {
-    id: "weather",
-    text: "What's the weather doing today?",
-    multi: false,
-    choices: [
-      { label: "☀️ Sunny / warm", value: "sunny" },
-      { label: "⛅ Mixed", value: "any" },
-      { label: "🌧️ Rainy / cool", value: "indoor" },
-    ],
-  },
   {
     id: "energy",
     text: "How much energy / time do you have today?",
@@ -717,27 +709,15 @@ const QUESTIONS = [
     ],
   },
   {
-    id: "mood",
-    text: "What are you in the mood for?",
-    multi: false,
-    choices: [
-      { label: "🌲 Nature", value: "nature" },
-      { label: "💧 Water", value: "water" },
-      { label: "🏛️ Culture", value: "culture" },
-      { label: "🍽️ Eating & drinking", value: "food" },
-      { label: "⚡ Adventure", value: "adventure" },
-    ],
-  },
-  {
     id: "activityType",
-    text: "Any particular type of activity?",
+    text: "What kind of activity?",
     multi: false,
     choices: [
       { label: "🥾 Hiking", value: "hiking" },
       { label: "🚴 Biking", value: "biking" },
       { label: "🏊 Swimming", value: "swimming" },
-      { label: "😌 Relaxing", value: "relaxing" },
-      { label: "🤷 No preference", value: "none" },
+      { label: "🍽️ Eating & drinking", value: "food" },
+      { label: "🎠 Kid's fun", value: "kidfun" },
     ],
   },
   {

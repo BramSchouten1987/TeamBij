@@ -440,6 +440,36 @@ async function enrichStayWeather(stays) {
   }
 }
 
+function weatherCodeToAnswer(code) {
+  if (code === 0 || code === 1) return "sunny";
+  if (code >= 51) return "indoor"; // drizzle/rain/snow/thunder — our "rainy/cool" bucket
+  return "any"; // partly cloudy, overcast, fog
+}
+
+// Shows the real forecast for one specific trip day (when available) instead
+// of asking the user to self-report the weather, and quietly sets
+// answers.weather from it so scoring works exactly as it did before —
+// just fed by real data rather than a guess.
+async function enrichDayWeather(date, stay, answers) {
+  const bannerEl = document.getElementById("day-weather");
+  if (!bannerEl) return;
+  if (!stay.address || !gmapsKey) { bannerEl.textContent = ""; return; }
+  try {
+    const place = await resolvePlace(stay.address);
+    if (!place || place.lat == null) return;
+    const forecast = await getForecast(place.lat, place.lng);
+    const hit = forecast && forecast[date];
+    if (hit) {
+      bannerEl.innerHTML = `${weatherIcon(hit.code)} <span class="temp-high">${hit.max}°</span>/${hit.min}° today`;
+      answers.weather = weatherCodeToAnswer(hit.code);
+    } else {
+      bannerEl.textContent = "Forecast not available yet for this day";
+    }
+  } catch (e) {
+    console.error(`Weather lookup failed for "${stay.address}"`, e);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Recommendation engine
 // ---------------------------------------------------------------------------
@@ -456,9 +486,20 @@ function scoreOption(opt, answers) {
   }
 
   let score = 0;
-  if (answers.mood && opt.category === answers.mood) score += 3;
-  if (answers.activityType && answers.activityType !== "none" && opt.activityType === answers.activityType) score += 3;
+  if (answers.activityType) {
+    const at = answers.activityType;
+    const activityMatches =
+      (at === "hiking" && opt.activityType === "hiking") ||
+      (at === "biking" && opt.activityType === "biking") ||
+      (at === "swimming" && opt.activityType === "swimming") ||
+      (at === "food" && opt.category === "food") ||
+      (at === "kidfun" && opt.category === "adventure");
+    if (activityMatches) score += 3;
+  }
   if (answers.energy && opt.effort === answers.energy) score += 2;
+  // answers.weather is populated automatically from the real forecast (see
+  // enrichDayWeather) rather than a question the user answers, but scores
+  // exactly the same way once set.
   if (answers.weather) {
     if (opt.weather === answers.weather) score += 2;
     else if (opt.weather === "any") score += 1;
@@ -629,6 +670,7 @@ function renderDay(date) {
   // showIf condition is met, so a full re-render on every answer keeps the
   // visible set correct rather than trying to patch the DOM incrementally.
   const answers = state.answers || {};
+  body += `<div class="day-weather" id="day-weather">Checking the forecast…</div>`;
   const visibleQuestions = QUESTIONS.filter((q) => !q.showIf || q.showIf(answers));
   visibleQuestions.forEach((q) => {
     body += `
@@ -668,6 +710,8 @@ function renderDay(date) {
     if (missing.length) { toast(`Answer "${missing[0].text}" first`); return; }
     renderChoices(date, stay, answers);
   };
+
+  enrichDayWeather(date, stay, answers);
 }
 
 function renderChoices(date, stay, answers, excludeIds = []) {
@@ -677,7 +721,7 @@ function renderChoices(date, stay, answers, excludeIds = []) {
   let body = `<div class="section-title">${label} for ${prettyDate(date)}</div>`;
 
   if (!top.length) {
-    body += `<div class="empty-hint">${excludeIds.length ? "That's everything that fits your answers." : "Nothing matches all your answers — try a carrier instead of walking, or a different mood."}</div>
+    body += `<div class="empty-hint">${excludeIds.length ? "That's everything that fits your answers." : "Nothing matches all your answers — try a carrier instead of walking, or a different activity type."}</div>
       <button class="btn secondary" id="backToQ">← Adjust answers</button>`;
   } else {
     top.forEach((opt, i) => {
@@ -715,8 +759,9 @@ function renderChoices(date, stay, answers, excludeIds = []) {
 function renderRefine(date, stay, answers, excludeIds) {
   const body = `
     <div class="section-title">What's not working?</div>
-    <button class="btn secondary refine-chip" data-refine="mood" style="margin-bottom:8px;">🎯 Different mood entirely</button>
-    <button class="btn secondary refine-chip" data-refine="effort" style="margin-bottom:8px;">😴 Lower the effort</button>
+    <button class="btn secondary refine-chip" data-refine="activity" style="margin-bottom:8px;">🎯 Different activity type</button>
+    <button class="btn secondary refine-chip" data-refine="easier" style="margin-bottom:8px;">😴 Lower the effort</button>
+    <button class="btn secondary refine-chip" data-refine="harder" style="margin-bottom:8px;">⚡ Go more active</button>
     ${gmapsKey ? `<button class="btn secondary refine-chip" data-refine="distance" style="margin-bottom:8px;">📍 Whatever's closest to the stay</button>` : ""}
     <button class="btn secondary refine-chip" data-refine="more" style="margin-bottom:8px;">🔀 Just show me different ones</button>
     <button class="btn secondary" id="backToChoices" style="margin-top:8px;">← Back</button>
@@ -727,12 +772,16 @@ function renderRefine(date, stay, answers, excludeIds) {
   $$(".refine-chip").forEach((btn) => {
     btn.onclick = () => {
       const kind = btn.dataset.refine;
-      if (kind === "effort") {
+      if (kind === "easier") {
         answers.energy = "low";
         saveDay(date, { answers });
         renderChoices(date, stay, answers, excludeIds);
-      } else if (kind === "mood") {
-        renderMoodRefine(date, stay, answers, excludeIds);
+      } else if (kind === "harder") {
+        answers.energy = "high";
+        saveDay(date, { answers });
+        renderChoices(date, stay, answers, excludeIds);
+      } else if (kind === "activity") {
+        renderActivityTypeRefine(date, stay, answers, excludeIds);
       } else if (kind === "distance") {
         renderByDistance(date, stay, answers, excludeIds);
       } else {
@@ -742,13 +791,13 @@ function renderRefine(date, stay, answers, excludeIds) {
   });
 }
 
-function renderMoodRefine(date, stay, answers, excludeIds) {
-  const moodQ = QUESTIONS.find((q) => q.id === "mood");
+function renderActivityTypeRefine(date, stay, answers, excludeIds) {
+  const activityQ = QUESTIONS.find((q) => q.id === "activityType");
   const body = `
-    <div class="section-title">What are you in the mood for instead?</div>
+    <div class="section-title">What kind of activity instead?</div>
     <div class="choices">
-      ${moodQ.choices.map((c) => `
-        <button class="choice-btn ${answers.mood === c.value ? "selected" : ""}" data-value="${c.value}">${c.label}</button>
+      ${activityQ.choices.map((c) => `
+        <button class="choice-btn ${answers.activityType === c.value ? "selected" : ""}" data-value="${c.value}">${c.label}</button>
       `).join("")}
     </div>
     <button class="btn secondary" id="backToRefine" style="margin-top:16px;">← Back</button>
@@ -757,7 +806,7 @@ function renderMoodRefine(date, stay, answers, excludeIds) {
   $("#backToRefine").onclick = () => renderRefine(date, stay, answers, excludeIds);
   $$(".choice-btn").forEach((btn) => {
     btn.onclick = () => {
-      answers.mood = btn.dataset.value;
+      answers.activityType = btn.dataset.value;
       saveDay(date, { answers });
       renderChoices(date, stay, answers, excludeIds);
     };
